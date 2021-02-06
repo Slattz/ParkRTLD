@@ -16,16 +16,16 @@ __attribute__((section(".data"))) bool g_ExceptionHandlerEnabled;
 __attribute__((section(".bss"))) Elf64_Addr (*g_pLookupGlobalManualFunctionPointer)(RoModule* module, const char *str);
 
 Elf64_Addr g_pLookupGlobalAutoFunctionPointer(const char* str) {
-    if ((LoadList *)g_pAutoLoadList.last != &g_pAutoLoadList) {
-        RoModule* last = g_pAutoLoadList.last;
+    if (g_pAutoLoadList.last != (RoModule *)&g_pAutoLoadList) {
+        RoModule* modObj = g_pAutoLoadList.last;
 
-        while (last != (RoModule *)&g_pAutoLoadList) {
-            Elf64_Sym* symbol = last->Lookup(str);
+        while (modObj != (RoModule *)&g_pAutoLoadList) {
+            Elf64_Sym* symbol = modObj->Lookup(str);
             if (symbol && ELF64_ST_BIND(symbol->st_info)) {
-               return reinterpret_cast<Elf64_Addr>(last->moduleBaseAddr + symbol->st_value);
+               return reinterpret_cast<Elf64_Addr>(modObj->moduleBaseAddr + symbol->st_value);
             }
 
-            last = last->prev;
+            modObj = modObj->prev;
         }
     }
 
@@ -168,40 +168,40 @@ extern "C" void __rtld_relocate_others(u8* rtldBaseAddr, Elf64_Dyn* dynamic) {
         address = nextAddress;
     }
 
-    if ((LoadList *)g_pAutoLoadList.last != &g_pAutoLoadList) {
-        RoModule* last = g_pAutoLoadList.last;
-        while (last != (RoModule *)&g_pAutoLoadList) {
-            Elf64_Sym* symbol = last->Lookup("_ZN2nn2ro6detail15g_pAutoLoadListE");
+    if (g_pAutoLoadList.last != (RoModule *)&g_pAutoLoadList) {
+        RoModule* modObj = g_pAutoLoadList.last;
+        while (modObj != (RoModule *)&g_pAutoLoadList) {
+            Elf64_Sym* symbol = modObj->Lookup("_ZN2nn2ro6detail15g_pAutoLoadListE");
             if (symbol && ELF64_ST_BIND(symbol->st_info)) {
-               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(last->moduleBaseAddr + symbol->st_value);
+               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(modObj->moduleBaseAddr + symbol->st_value);
                *addr = reinterpret_cast<Elf64_Xword>(&g_pAutoLoadList);
             }
 
-            symbol = last->Lookup("_ZN2nn2ro6detail17g_pManualLoadListE");
+            symbol = modObj->Lookup("_ZN2nn2ro6detail17g_pManualLoadListE");
             if (symbol && ELF64_ST_BIND(symbol->st_info)) {
-               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(last->moduleBaseAddr + symbol->st_value);
+               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(modObj->moduleBaseAddr + symbol->st_value);
                *addr = reinterpret_cast<Elf64_Xword>(&g_pManualLoadList);
             }
 
-            symbol = last->Lookup("_ZN2nn2ro6detail14g_pRoDebugFlagE");
+            symbol = modObj->Lookup("_ZN2nn2ro6detail14g_pRoDebugFlagE");
             if (symbol && ELF64_ST_BIND(symbol->st_info)) {
-               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(last->moduleBaseAddr + symbol->st_value);
+               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(modObj->moduleBaseAddr + symbol->st_value);
                *addr = reinterpret_cast<Elf64_Xword>(&g_pRoDebugFlag);
             }
 
-            symbol = last->Lookup("_ZN2nn2ro6detail34g_pLookupGlobalAutoFunctionPointerE");
+            symbol = modObj->Lookup("_ZN2nn2ro6detail34g_pLookupGlobalAutoFunctionPointerE");
             if (symbol && ELF64_ST_BIND(symbol->st_info)) {
-               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(last->moduleBaseAddr + symbol->st_value);
+               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(modObj->moduleBaseAddr + symbol->st_value);
                *addr = reinterpret_cast<Elf64_Xword>(&g_pLookupGlobalAutoFunctionPointer);
             }
 
-            symbol = last->Lookup("_ZN2nn2ro6detail36g_pLookupGlobalManualFunctionPointerE");
+            symbol = modObj->Lookup("_ZN2nn2ro6detail36g_pLookupGlobalManualFunctionPointerE");
             if (symbol && ELF64_ST_BIND(symbol->st_info)) {
-               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(last->moduleBaseAddr + symbol->st_value);
+               Elf64_Addr* addr = reinterpret_cast<Elf64_Addr*>(modObj->moduleBaseAddr + symbol->st_value);
                *addr = reinterpret_cast<Elf64_Xword>(&g_pLookupGlobalManualFunctionPointer);
             }
 
-            last = last->prev;
+            modObj = modObj->prev;
         }
 
         for (RoModule* modObj = g_pAutoLoadList.last; modObj != (RoModule*)&g_pAutoLoadList; modObj = modObj->prev) {
@@ -214,23 +214,23 @@ extern "C" void __rtld_relocate_others(u8* rtldBaseAddr, Elf64_Dyn* dynamic) {
 }
 
 extern "C" void __rtld_init_modules(void) {
-    if ((LoadList *)g_pAutoLoadList.last != &g_pAutoLoadList) {
-        RoModule* front = g_pAutoLoadList.front;
+    if (g_pAutoLoadList.last != (RoModule *)&g_pAutoLoadList) {
+        RoModule* modObj = g_pAutoLoadList.front;
 
-        while (front != g_pAutoLoadList.last) {
-            front->CallInit();
-            front = front->next;
+        while (modObj != g_pAutoLoadList.last) {
+            modObj->CallInit();
+            modObj = modObj->next;
         }
     }
 }
 
 extern "C" void __rtld_fini_modules(void) {
-    if ((LoadList *)g_pAutoLoadList.last != &g_pAutoLoadList) {
-        RoModule* last = g_pAutoLoadList.last;
+    if (g_pAutoLoadList.last != (RoModule *)&g_pAutoLoadList) {
+        RoModule* modObj = g_pAutoLoadList.last;
 
-        while (last != g_pAutoLoadList.front) {
-            last->CallFini();
-            last = last->prev;
+        while (modObj != g_pAutoLoadList.front) {
+            modObj->CallFini();
+            modObj = modObj->prev;
         }
     }
 }

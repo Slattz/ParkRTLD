@@ -129,10 +129,10 @@ void RoModule::Init(u8* moduleBaseAddr, u64 arg1_0, Elf64_Dyn *dynamic, bool arg
                 this->off_soname = entry->d_un.d_val; //0xB0
                 break;
 
-            case DT_NEEDED:
-            case DT_RPATH:
-            case DT_SYMBOLIC:
-            case DT_DEBUG:
+            case DT_NEEDED: [[fallthrough]];
+            case DT_RPATH: [[fallthrough]];
+            case DT_SYMBOLIC: [[fallthrough]];
+            case DT_DEBUG: [[fallthrough]];
             case DT_TEXTREL:
                 break;
         }
@@ -162,7 +162,7 @@ void RoModule::Relocate() {
                 *addr = reinterpret_cast<Elf64_Xword>(this->moduleBaseAddr + entry->r_addend);
             }
 
-            /* Elf64_Rela size already verified in DT_RELAENT case in ::Init, so it uses sizeof here instead of this->rela_dyn_size */
+            /* Elf64_Rela size already verified in DT_RELAENT case in RoModule::Init, so it uses sizeof here instead of this->rela_dyn_size */
             offset += sizeof(Elf64_Rela);
         }
     }
@@ -181,7 +181,7 @@ ALWAYS_INLINE u32 elfHash(const u8* name) {
 }
 
 Elf64_Sym* RoModule::Lookup(const char* symbol) {
-    u32 hash = elfHash((u8*)symbol);
+    u32 hash = elfHash((const u8*)symbol);
 
     for (u32 i = this->hashBucket[hash % this->nbucket]; i; i = this->hashChain[i]) {
         Elf64_Sym* sym = &this->dynsymTable[i];
@@ -247,7 +247,7 @@ void RoModule::Relocation(bool lazyGotPlt) {
 #ifndef EASE_RESTRICTIONS
     if (this->relEnt_count < this->rel_dyn_size/sizeof(Elf64_Rel)) {
         for (Elf64_Xword i = this->relEnt_count; i < this->rel_dyn_size/sizeof(Elf64_Rel); i++) {
-            OutputAndBreak("RoModule::Relocation: Has Rel!\n", 0, 0, 0); //official rtld only wants RELA types, hangs if REL is found
+            OutputAndBreak("RoModule::Relocation: Has Rel!\n", 0, 0, 0); //official rtld only wants RELA types, panics if REL is found
         }
     }
 #endif
@@ -326,7 +326,7 @@ void RoModule::Relocation(bool lazyGotPlt) {
 #ifndef EASE_RESTRICTIONS
     else if (this->plt_size >= sizeof(Elf64_Rel)) {
         for (Elf64_Xword i = 0; i < this->plt_size/sizeof(Elf64_Rel); i++) {
-            OutputAndBreak("RoModule::Relocation: Has Rel Plt!\n", 0, 0, 0); //official rtld only wants RELA types, hangs if REL is found
+            OutputAndBreak("RoModule::Relocation: Has Rel Plt!\n", 0, 0, 0); //official rtld only wants RELA types, panics if REL is found
         }
     }
 #endif
@@ -362,7 +362,7 @@ Elf64_Addr RoModule::BindEntry(u64 index) {
     }
 
     else {
-        OutputAndBreak("RoModule::BindEntry: this->is_rela is false!\n", 0, 0, 0); //official rtld only wants RELA types, hangs if REL is found
+        OutputAndBreak("RoModule::BindEntry: this->is_rela is false!\n", 0, 0, 0); //official rtld only wants RELA types, panics if REL is found
         ret = 0;
     }
 
